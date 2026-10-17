@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Book Reselling – Team Board</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--tx:#1c1c1a;--mu:#6b6a64;--bd:#e2e0d8;--ac:#2a6f5c;--acbg:#e3f1ec;--wn:#b4531a}
+@media(prefers-color-scheme:dark){:root{--bg:#161615;--card:#212120;--tx:#ecebe5;--mu:#9a988f;--bd:#34342f;--ac:#5fc2a4;--acbg:#1f3a32;--wn:#e08a50}}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:16px}h1{font-size:1.35rem;margin:4px 0}
+.sub{color:var(--mu);font-size:.9rem}
+.bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden;margin:10px 0 4px}.bar i{display:block;height:100%;background:var(--ac);width:0;transition:width .3s}
+.namebox{margin:12px 0}.namebox input{font:inherit;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);margin-left:6px;width:min(220px,60%)}
+.tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:12px 0}@media(min-width:560px){.tabs{grid-template-columns:repeat(4,1fr)}}
+.tabs button{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:12px;padding:10px;font:inherit;text-align:left}
+.tabs button b{display:block}.tabs button small{opacity:.8;font-size:.8rem}.tabs button.on{background:var(--ac);color:var(--bg);border-color:var(--ac)}
+.t{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center}
+.t.mine{border-color:var(--ac);background:var(--acbg)}.t.done .n b{text-decoration:line-through;color:var(--mu)}
+.t input{width:20px;height:20px;accent-color:var(--ac);flex:none}.n{flex:1;min-width:0}.n b{display:block}.n small{color:var(--mu)}
+.t button{border:1px solid var(--ac);background:none;color:var(--ac);border-radius:8px;padding:6px 10px;font:inherit;font-size:.85rem}
+.t button.rel{border-color:var(--bd);color:var(--mu)}.who{font-size:.8rem;color:var(--ac);font-weight:600}.who.o{color:var(--mu)}
+.msg{border:1px solid var(--wn);color:var(--wn);padding:10px;border-radius:8px;margin:10px 0;font-size:.9rem}
+</style></head><body><main>
+<h1>📚 Online Book Reselling – Team Board</h1>
+<p class="sub">Type your name, tap <b>Take it</b> on a task, tick it when done. Everyone sees updates live.</p>
+<div class="bar"><i id="bar"></i></div><div class="sub" id="pct"></div>
+<div class="namebox"><label>Your name <input id="myname" placeholder="Type your name first" maxlength="30"></label></div>
+<div id="msg"></div><div class="tabs" id="tabs"></div><div id="list"></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL="https://mijbefucvtadgmkpnhph.supabase.co/rest/v1/";
+const SUPABASE_KEY="sb_publishable_iXkh-cEeVyZ2sgOg_yhnOQ_cKGO3Igy";
+const TASKS=[
+["Frontend","Registration page","Form for name, email, password and other details"],["Frontend","Login page","Login form and validation messages"],
+["Frontend","View Books","Catalog with images, titles, prices, descriptions"],["Frontend","Search Books","Search bar, category filters, results"],
+["Frontend","Add/Upload Books","Form to list a book and upload its image"],["Frontend","Shopping Cart","Selected books, quantities, total price"],
+["Frontend","Checkout","Shipping address, order summary, payment UI"],["Frontend","My Orders","Purchase history and order status"],
+["Frontend","View Buyer","Seller page with buyer and order details"],["Frontend","Admin Login","Admin login interface"],
+["Frontend","Admin Dashboard","Overview of users, books, transactions"],["Frontend","Admin View Books","Table/list of all book listings"],
+["Frontend","Admin View Users","Table of registered users"],["Frontend","Admin View Transactions","Table of transaction and order records"],
+["Backend","Inventory Management","Update availability when books are sold"],["Backend","Authorization","Restrict private data and admin functions"],
+["Database","Users table","User ID, name, email, password hash, contact"],["Database","Books table","Book ID, title, author, price, condition, seller ID, image"],
+["Database","Cart Items table","User ID, book ID, quantity"],["Database","Orders table","Order ID, buyer ID, total, shipping address, status"],
+["Database","Order Items table","Order ID, book ID, price at purchase, seller ID"],["Database","Transactions table","Transaction ID, order ID, amount, payment status"],
+["Database","Admins table","Admin ID, login credentials, role"]
+].map((t,i)=>({id:"t"+i,g:t[0],title:t[1],desc:t[2]}));
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let sb=null,state={},filter="Frontend",myName="";
+try{myName=localStorage.getItem("bk_name")||""}catch(_){}
+$("myname").value=myName;
+$("myname").addEventListener("input",e=>{myName=e.target.value.trim();try{localStorage.setItem("bk_name",myName)}catch(_){};render()});
+const note=t=>{$("msg").innerHTML=t?`<div class="msg">${t}</div>`:""};
+function render(){
+ const tabs=["Frontend","Backend","Database","Mine"];
+ $("tabs").innerHTML=tabs.map(t=>{const g=t==="Mine"?TASKS.filter(x=>myName&&(state[x.id]||{}).owner_name===myName):TASKS.filter(x=>x.g===t);
+  const d=g.filter(x=>(state[x.id]||{}).done).length;
+  return `<button class="${t===filter?"on":""}" data-f="${t}"><b>${t==="Mine"?"My tasks":t}</b><small>${t==="Mine"?g.length+" taken":d+"/"+g.length+" done"}</small></button>`}).join("");
+ const vis=TASKS.filter(t=>filter==="Mine"?(myName&&(state[t.id]||{}).owner_name===myName):t.g===filter);
+ $("list").innerHTML=vis.map(t=>{const s=state[t.id]||{},o=s.owner_name||"",mine=o&&o===myName;
+  return `<div class="t ${mine?"mine":""} ${s.done?"done":""}">
+  ${o?`<input type="checkbox" data-d="${t.id}" ${s.done?"checked":""} ${mine?"":"disabled"}>`:""}
+  <div class="n"><b>${esc(t.title)}</b><small>${esc(t.g)} · ${esc(t.desc)}</small>
+  ${o?`<div class="who ${mine?"":"o"}">${esc(o)}${mine?" (you)":""}${s.done?" ✓ done":" · in progress"}</div>`:""}</div>
+  ${!o?`<button data-c="${t.id}">Take it</button>`:""}${mine?`<button class="rel" data-r="${t.id}">Release</button>`:""}</div>`}).join("")||'<p class="sub">Nothing here.</p>';
+ const done=TASKS.filter(t=>(state[t.id]||{}).done).length;
+ $("bar").style.width=(done/TASKS.length*100)+"%";$("pct").textContent=`${done} of ${TASKS.length} tasks done`;
+}
+async function load(){const {data,error}=await sb.from("tasks").select("*");
+ if(error){note("Could not load. Check the Project URL and that the tasks table exists.");return}
+ state={};data.forEach(r=>state[r.id]=r);render()}
+async function claim(id){
+ if(!myName){note("Type your name at the top first.");$("myname").focus();return}
+ note("");
+ let {error}=await sb.from("tasks").insert({id,owner_name:myName,done:false});
+ if(error){const r=await sb.from("tasks").update({owner_name:myName,done:false}).eq("id",id).eq("owner_name","").select();
+  if(r.error||!r.data.length)note("Someone just took that task.")}
+ load()}
+async function release(id){await sb.from("tasks").update({owner_name:"",done:false}).eq("id",id).eq("owner_name",myName);load()}
+async function toggle(id,v){await sb.from("tasks").update({done:v}).eq("id",id).eq("owner_name",myName);load()}
+document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+ if(b.dataset.f){filter=b.dataset.f;render()}else if(!sb)return;
+ else if(b.dataset.c)claim(b.dataset.c);else if(b.dataset.r)release(b.dataset.r)});
+document.addEventListener("change",e=>{const d=e.target.dataset.d;if(d&&sb)toggle(d,e.target.checked)});
+render();
+if(SUPABASE_URL.startsWith("PASTE")){note("Set SUPABASE_URL at the top of the script to your Project URL.")}
+else{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);load();
+ sb.channel("tasks").on("postgres_changes",{event:"*",schema:"public",table:"tasks"},load).subscribe();
+ setInterval(load,20000)}
+</script></body></html>
