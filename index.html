@@ -41,7 +41,9 @@ const TASKS=[
 ["Database","Users table","User ID, name, email, password hash, contact"],["Database","Books table","Book ID, title, author, price, condition, seller ID, image"],
 ["Database","Cart Items table","User ID, book ID, quantity"],["Database","Orders table","Order ID, buyer ID, total, shipping address, status"],
 ["Database","Order Items table","Order ID, book ID, price at purchase, seller ID"],["Database","Transactions table","Transaction ID, order ID, amount, payment status"],
-["Database","Admins table","Admin ID, login credentials, role"]
+["Database","Admins table","Admin ID, login credentials, role"],
+["Backend","User & Admin Authentication","Register, login, logout, password hashing, sessions/tokens, separate admin login"],
+["Backend","Book Management & Search","Add, edit, delete books, image upload, search by title/author, category filters"]
 ].map((t,i)=>({id:"t"+i,g:t[0],title:t[1],desc:t[2]}));
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
