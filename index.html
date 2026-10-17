@@ -27,7 +27,7 @@ main{max-width:760px;margin:0 auto;padding:16px}h1{font-size:1.35rem;margin:4px 
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const SUPABASE_URL="https://mijbefucvtadgmkpnhph.supabase.co/rest/v1/";
+const SUPABASE_URL="https://mijbefucvtadgmkpnhph.supabase.co";
 const SUPABASE_KEY="sb_publishable_iXkh-cEeVyZ2sgOg_yhnOQ_cKGO3Igy";
 const TASKS=[
 ["Frontend","Registration page","Form for name, email, password and other details"],["Frontend","Login page","Login form and validation messages"],
@@ -66,7 +66,7 @@ function render(){
  $("bar").style.width=(done/TASKS.length*100)+"%";$("pct").textContent=`${done} of ${TASKS.length} tasks done`;
 }
 async function load(){const {data,error}=await sb.from("tasks").select("*");
- if(error){note("Could not load. Check the Project URL and that the tasks table exists.");return}
+ if(error){note("Could not load: "+esc(error.message||error.code||"unknown error"));return}
  state={};data.forEach(r=>state[r.id]=r);render()}
 async function claim(id){
  if(!myName){note("Type your name at the top first.");$("myname").focus();return}
