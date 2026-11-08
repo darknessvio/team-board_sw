@@ -25,10 +25,8 @@ main{max-width:760px;margin:0 auto;padding:16px}h1{font-size:1.35rem;margin:4px 
 <div class="namebox"><label>Your name <input id="myname" placeholder="Type your name first" maxlength="30"></label></div>
 <div id="msg"></div><div class="tabs" id="tabs"></div><div id="list"></div>
 </main>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
-const SUPABASE_URL="https://mijbefucvtadgmkpnhph.supabase.co";
-const SUPABASE_KEY="sb_publishable_iXkh-cEeVyZ2sgOg_yhnOQ_cKGO3Igy";
+const API="https://script.google.com/macros/s/AKfycbwJ29jOB8OWxOgIFRw8_Ibg516AeEY7g0FHXotYCrOExB_fXdHnORfJ4uWPa9MmPJKp/exec";
 const TASKS=[
 ["Frontend","Registration page","Form for name, email, password and other details"],["Frontend","Login page","Login form and validation messages"],
 ["Frontend","View Books","Catalog with images, titles, prices, descriptions"],["Frontend","Search Books","Search bar, category filters, results"],
@@ -47,7 +45,7 @@ const TASKS=[
 ].map((t,i)=>({id:"t"+i,g:t[0],title:t[1],desc:t[2]}));
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let sb=null,state={},filter="Frontend",myName="";
+let state={},filter="Frontend",myName="";
 try{myName=localStorage.getItem("bk_name")||""}catch(_){}
 $("myname").value=myName;
 $("myname").addEventListener("input",e=>{myName=e.target.value.trim();try{localStorage.setItem("bk_name",myName)}catch(_){};render()});
@@ -67,25 +65,23 @@ function render(){
  const done=TASKS.filter(t=>(state[t.id]||{}).done).length;
  $("bar").style.width=(done/TASKS.length*100)+"%";$("pct").textContent=`${done} of ${TASKS.length} tasks done`;
 }
-async function load(){const {data,error}=await sb.from("tasks").select("*");
- if(error){note("Could not load: "+esc(error.message||error.code||"unknown error"));return}
- state={};data.forEach(r=>state[r.id]=r);render()}
+const waiting=()=>API.startsWith("PASTE");
+async function call(body){
+ try{const r=await fetch(API,body?{method:"POST",body:JSON.stringify(body)}:{});
+  const j=await r.json();if(j.tasks){state=j.tasks;render()}return j}
+ catch(e){note("Could not reach the sheet: "+esc(e.message));return null}}
+const load=()=>call();
 async function claim(id){
  if(!myName){note("Type your name at the top first.");$("myname").focus();return}
- note("");
- let {error}=await sb.from("tasks").insert({id,owner_name:myName,done:false});
- if(error){const r=await sb.from("tasks").update({owner_name:myName,done:false}).eq("id",id).eq("owner_name","").select();
-  if(r.error||!r.data.length)note("Someone just took that task.")}
- load()}
-async function release(id){await sb.from("tasks").update({owner_name:"",done:false}).eq("id",id).eq("owner_name",myName);load()}
-async function toggle(id,v){await sb.from("tasks").update({done:v}).eq("id",id).eq("owner_name",myName);load()}
+ note("");const j=await call({action:"claim",id,name:myName});
+ if(j&&!j.ok)note("Someone just took that task.")}
+const release=id=>call({action:"release",id,name:myName});
+const toggle=(id,v)=>call({action:"done",id,name:myName,done:v});
 document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
- if(b.dataset.f){filter=b.dataset.f;render()}else if(!sb)return;
+ if(b.dataset.f){filter=b.dataset.f;render()}else if(waiting())return;
  else if(b.dataset.c)claim(b.dataset.c);else if(b.dataset.r)release(b.dataset.r)});
-document.addEventListener("change",e=>{const d=e.target.dataset.d;if(d&&sb)toggle(d,e.target.checked)});
+document.addEventListener("change",e=>{const d=e.target.dataset.d;if(d&&!waiting())toggle(d,e.target.checked)});
 render();
-if(SUPABASE_URL.startsWith("PASTE")){note("Set SUPABASE_URL at the top of the script to your Project URL.")}
-else{sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);load();
- sb.channel("tasks").on("postgres_changes",{event:"*",schema:"public",table:"tasks"},load).subscribe();
- setInterval(load,20000)}
+if(waiting())note("Set API at the top of the script to your Web app URL.");
+else{load();setInterval(()=>{if(!document.hidden)load()},15000)}
 </script></body></html>
